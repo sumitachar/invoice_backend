@@ -1,5 +1,7 @@
 import { Category } from 'src/category/category.entity';
+import { Gst } from 'src/gst/gst.entity';
 import { Product } from 'src/product/product.entity';
+import { Store } from 'src/store/store.entity';
 import { Supplier } from 'src/supplier/supplier.entity';
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 
@@ -35,9 +37,15 @@ export class User {
   @OneToMany(() => Category, (category) => category.shop)
   categories: Category[];
 
+  @OneToMany(() => Store, (store) => store.shop)
+  stores: Store[];
+
   @OneToMany(() => Product, (product) => product.shop)
   products: Product[];
 
   @OneToMany(() => Supplier, (supplier) => supplier.shop)
   suppliers: Supplier[]; // 👈 Add this to establish reverse relation
+
+  @OneToMany(() => Gst, (gst) => gst.shop)
+  gsts: Gst;
 }

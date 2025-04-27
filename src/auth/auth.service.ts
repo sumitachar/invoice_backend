@@ -3,18 +3,18 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UserService } from '../user/user.service';
 import { RegisterDto } from './dto/register.dto';
-import { ConfigService } from '@nestjs/config'; // ✅ Import ConfigService
-import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken'; // Import the relevant error classes
+import { ConfigService } from '@nestjs/config';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 @Injectable()
 export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-    private configService: ConfigService, // ✅ Inject ConfigService
+    private configService: ConfigService,
   ) {}
 
-  // Validate user by email and password
+  // Validate user credentials
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.userService.findByEmail(email);
     if (user && bcrypt.compareSync(password, user.password)) {
@@ -32,12 +32,17 @@ export class AuthService {
     return user;
   }
 
-  // Login user and generate access and refresh tokens
+  // Login user and return access + refresh tokens
   async login(user: any) {
     const payload = { email: user.email, shop_id: user.shop_id };
 
-    const access_token = this.jwtService.sign(payload);
+    // Generate access token (expires in 15m)
+    const access_token = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+      expiresIn: '15m',
+    });
 
+    // Generate refresh token (expires in 7 days)
     const refresh_token = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       expiresIn: '7d',
@@ -58,7 +63,7 @@ export class AuthService {
     let isUnique = false;
 
     while (!isUnique) {
-      shop_id = Math.floor(100000 + Math.random() * 900000); // 6-digit unique ID
+      shop_id = Math.floor(100000 + Math.random() * 900000); // Generate unique 6-digit ID
       const existingUser = await this.userService.findByShopId(shop_id);
       if (!existingUser) {
         isUnique = true;
@@ -79,19 +84,20 @@ export class AuthService {
     });
   }
 
-  // Verify JWT token
-  async verifyToken(token: string): Promise<any> {
+  // Verify a JWT token
+  async verifyToken(token: string, isRefreshToken: boolean = false): Promise<any> {
     try {
-      // Verify token
-      const decoded = this.jwtService.verify(token);
+      const secretKey = isRefreshToken
+        ? this.configService.get<string>('JWT_REFRESH_SECRET')
+        : this.configService.get<string>('JWT_SECRET');
 
-      // Fetch user based on decoded email
+      const decoded = this.jwtService.verify(token, { secret: secretKey });
+
       const user = await this.userService.findByEmail(decoded.email);
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
-      // Return user details
       return {
         shop_id: user.shop_id,
         shop_name: user.shop_name,
@@ -100,17 +106,16 @@ export class AuthService {
         sub_expiry: user.subscription_expiry,
       };
     } catch (error) {
-      console.error('Error in verifyToken:', error.message);  // Adding error logging
+      console.error('Error in verifyToken:', error.message);
 
-      // Handle specific JWT error types
       if (error instanceof TokenExpiredError) {
         throw new UnauthorizedException('Token expired');
       }
+
       if (error instanceof JsonWebTokenError) {
         throw new UnauthorizedException('Invalid token');
       }
 
-      // General fallback for any other errors
       throw new UnauthorizedException('Token verification failed');
     }
   }

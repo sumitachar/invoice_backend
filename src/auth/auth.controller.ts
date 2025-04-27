@@ -35,33 +35,34 @@ export class AuthController {
   @Post('refresh')
   async refresh(@Body('refresh_token') refresh_token: string) {
     try {
-      // Verifying the refresh token
       const decoded = this.jwtService.verify(refresh_token, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
-
-      // Fetch user based on decoded email
+  
       const user = await this.authService.getUserByEmail(decoded.email);
   
-      // Generate new access token
-      const newAccessToken = this.jwtService.sign({
-        email: user.email,
-        shop_id: user.shop_id,
-      });
+      const newAccessToken = this.jwtService.sign(
+        {
+          email: user.email,
+          shop_id: user.shop_id,
+        },
+        {
+          secret: this.configService.get<string>('JWT_SECRET'), // ✅ Always sign access tokens with JWT_SECRET
+          expiresIn: '15m', // ✅ Set expiry for new access token also
+        }
+      );
   
       return { access_token: newAccessToken };
     } catch (err) {
-      console.error('Error in refresh token:', err.message);  // Adding error logging
-
-      // Handling specific JWT error types
+      console.error('Error in refresh token:', err.message);
       if (err instanceof TokenExpiredError) {
         throw new UnauthorizedException('Refresh token expired');
       }
       if (err instanceof JsonWebTokenError) {
         throw new UnauthorizedException('Invalid refresh token');
       }
-      // If error doesn't match above cases
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
+  
 }

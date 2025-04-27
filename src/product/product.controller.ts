@@ -1,4 +1,11 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Patch,
+  Body,
+  BadRequestException,
+  Query,
+} from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { Product } from './product.entity';
@@ -7,45 +14,69 @@ import { Product } from './product.entity';
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
-  // Create a new product
-  @Post()
-  async createProduct(@Body() createProductDto: CreateProductDto): Promise<Product> {
-    return this.productService.createProduct(createProductDto);
+  // ✅ Create Product
+  @Post('/create')
+  async createProduct(
+    @Body('shop_id') shop_id: number,
+    @Body() createProductDto: CreateProductDto,
+  ) {
+    if (!shop_id) {
+      throw new BadRequestException('shop_id is required');
+    }
+    return this.productService.createProduct(shop_id, createProductDto);
   }
 
-  // Get all products by shop_id and category_id
-  @Get('shop/:shop_id/category/:category_id')
-  async getProductsByShopAndCategory(
-    @Param('shop_id') shop_id: number,
-    @Param('category_id') category_id: number,
+  // ✅ List Products by category with Pagination — shop_id in body, page+limit in query
+  @Post('/listByCategory')
+  async getProductsByCategory(
+    @Body('shop_id') shop_id: number,
+    @Body('category_id') category_id: number,
   ): Promise<Product[]> {
-    return this.productService.getProductsByShopAndCategory(shop_id, category_id);
+    if (!shop_id || !category_id) {
+      throw new BadRequestException('shop_id and category_id are required');
+    }
+  
+    return this.productService.getProductsByCategory(shop_id, category_id);
   }
+  
 
-  // Get a single product by its ID
-  @Get(':id')
-  async getProductById(@Param('id') id: number): Promise<Product> {
-    return this.productService.getProductById(id);
+  @Post('/all_list')
+  async getAllProducts(
+    @Body('shop_id') shop_id: number,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ): Promise<{ products: Product[]; totalPages: number }> {
+    if (!shop_id) {
+      throw new BadRequestException('shop_id is required');
+    }
+  
+    return this.productService.getAllProductsPaginated(shop_id, +page, +limit);
   }
+  
 
-  // Update product details
-  @Put(':id')
+  // ✅ Update Product — shop_id, product_code in body
+  @Patch('/update')
   async updateProduct(
-    @Param('id') id: number,
-    @Body() updateProductDto: UpdateProductDto,
-  ): Promise<Product> {
-    return this.productService.updateProduct(id, updateProductDto);
+    @Body() body: UpdateProductDto & { shop_id: number; product_code: string },
+  ) {
+    const { shop_id, product_code } = body;
+
+    if (!shop_id || !product_code) {
+      throw new BadRequestException('shop_id and product_code are required');
+    }
+
+    return this.productService.updateProduct(shop_id, product_code, body);
   }
 
-  // Soft delete a product
-  @Put(':id/soft-delete')
-  async softDeleteProduct(@Param('id') id: number): Promise<Product> {
-    return this.productService.softDeleteProduct(id);
-  }
+  // ✅ Soft Delete Product — shop_id and product_code in body
+  @Patch('/soft-delete')
+  async softDeleteProduct(@Body() body: { shop_id: number; product_code: string }) {
+    const { shop_id, product_code } = body;
 
-  // Hard delete a product
-  @Delete(':id')
-  async hardDeleteProduct(@Param('id') id: number): Promise<void> {
-    return this.productService.hardDeleteProduct(id);
+    if (!product_code || !shop_id) {
+      throw new BadRequestException('product_code and shop_id are required');
+    }
+
+    return this.productService.softDeleteProduct(shop_id, product_code);
   }
 }

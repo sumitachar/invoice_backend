@@ -1,3 +1,4 @@
+import { Gst } from 'src/gst/gst.entity';
 import { Product } from 'src/product/product.entity';
 import { Supplier } from 'src/supplier/supplier.entity';
 import { User } from 'src/user/user.entity';
@@ -9,6 +10,7 @@ import {
   OneToMany,
   JoinColumn,
   Unique,
+  OneToOne,
 } from 'typeorm';
 
 @Entity()
@@ -17,7 +19,7 @@ export class Category {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: true }) // Optional custom ID if needed
+  @Column({ unique: true })
   category_id: number;
 
   @Column()
@@ -41,4 +43,8 @@ export class Category {
   // 🔗 One-to-Many relation with Supplier
   @OneToMany(() => Supplier, (supplier) => supplier.category)
   suppliers: Supplier[];
+
+  @OneToOne(() => Gst, (gst) => gst.category)
+  gst: Gst;
+
 }

@@ -4,6 +4,8 @@ import 'dotenv/config';
 import { Category } from 'src/category/category.entity';
 import { Product } from 'src/product/product.entity';
 import { Supplier } from 'src/supplier/supplier.entity';
+import { Store } from 'src/store/store.entity';
+import { Gst } from 'src/gst/gst.entity';
 
 export const databaseConfig: TypeOrmModuleOptions = {
   type: 'postgres',
@@ -12,6 +14,6 @@ export const databaseConfig: TypeOrmModuleOptions = {
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASS || 'sumit89',
   database: process.env.DB_NAME || 'invoice',
-  entities: [User, Category, Product, Supplier], 
+  entities: [User, Category, Product, Supplier, Store, Gst], 
   synchronize: true
 };
